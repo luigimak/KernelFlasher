@@ -429,10 +429,10 @@ class SlotViewModel(
     }
 
     private fun resetSlot() {
-        val activeSlotSuffix = Shell.cmd("getprop ro.boot.slot_suffix").exec().out[0]
-        val newSlot = if (activeSlotSuffix == "_a") "_b" else "_a"
-        Shell.cmd("magisk resetprop -n ro.boot.slot_suffix $newSlot").exec()
-        wasSlotReset = !wasSlotReset
+        // val activeSlotSuffix = Shell.cmd("getprop ro.boot.slot_suffix").exec().out[0]
+        // val newSlot = if (activeSlotSuffix == "_a") "_b" else "_a"
+        // Shell.cmd("magisk resetprop -n ro.boot.slot_suffix $newSlot").exec()
+        // wasSlotReset = !wasSlotReset
     }
 
     @Suppress("FunctionName")
@@ -496,7 +496,7 @@ class SlotViewModel(
     }
 
     @Suppress("FunctionName")
-    private suspend fun _flashAk3(context: Context) {
+    private suspend fun _flashAk3(context: Context, slotSuffix: String) {
         if (!isActive) {
             resetSlot()
         }
@@ -507,7 +507,8 @@ class SlotViewModel(
                 _wasFlashSuccess.value = false
                 val files = File(context.filesDir.canonicalPath)
                 val flashScript = File(files, "flash_ak3.sh")
-                val result = Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER or Shell.FLAG_REDIRECT_STDERR).build().newJob().add("F=$files Z=\"$zip\" /system/bin/sh $flashScript").to(flashOutput).exec()
+                val slot_inactive_state = if(isActive) "active" else "inactive"
+                val result = Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER or Shell.FLAG_REDIRECT_STDERR).build().newJob().add("F=$files Z=\"$zip\" S=\"$slot_inactive_state\" P=\"$slotSuffix\" /system/bin/sh $flashScript").to(flashOutput).exec()
                 if (result.isSuccess) {
                     log(context, "Kernel flashed successfully")
                     _wasFlashSuccess.value = true
@@ -533,7 +534,7 @@ class SlotViewModel(
         launch {
             _clearFlash()
             _copyFile(context, currentBackup, filename)
-            _flashAk3(context)
+            _flashAk3(context,slotSuffix)
         }
     }
 
@@ -541,7 +542,7 @@ class SlotViewModel(
         launch {
             _clearFlash()
             _copyFile(context, uri)
-            _flashAk3(context)
+            _flashAk3(context, slotSuffix)
         }
     }
 

@@ -196,9 +196,9 @@ class MainActivity : ComponentActivity() {
                     val updatesViewModel = mainViewModel.updates
                     val rebootViewModel = mainViewModel.reboot
                     BackHandler(enabled = mainViewModel.isRefreshing, onBack = {})
-                    val slotContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
-                        val slotSuffix = backStackEntry.arguments?.getString("slotSuffix") ?: ""
-                        val slotViewModel = if (slotSuffix == "_b") slotViewModelB else slotViewModelA
+                    val slotContentA: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_a"
+                        val slotViewModel = slotViewModelA
                         if (slotViewModel!!.wasFlashSuccess != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
                             slotViewModel.clearFlash(this@MainActivity)
                         }
@@ -207,16 +207,52 @@ class MainActivity : ComponentActivity() {
                         }
 
                     }
-                    val slotFlashContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
-                        val slotSuffix = backStackEntry.arguments?.getString("slotSuffix") ?: ""
-                        val slotViewModel = if (slotSuffix == "_b") slotViewModelB else slotViewModelA
+                    val slotContentB: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_b"
+                        val slotViewModel = slotViewModelB
+                        if (slotViewModel!!.wasFlashSuccess != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
+                            slotViewModel.clearFlash(this@MainActivity)
+                        }
+                        RefreshableScreen(mainViewModel, navController, swipeEnabled = true) {
+                            SlotContent(slotViewModel, slotSuffix, navController)
+                        }
+
+                    }
+                    val slotContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = ""
+                        val slotViewModel = slotViewModelA
+                        if (slotViewModel!!.wasFlashSuccess != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
+                            slotViewModel.clearFlash(this@MainActivity)
+                        }
+                        RefreshableScreen(mainViewModel, navController, swipeEnabled = true) {
+                            SlotContent(slotViewModel, slotSuffix, navController)
+                        }
+
+                    }
+                    val slotFlashContentA: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_a"
+                        val slotViewModel = slotViewModelA
                         RefreshableScreen(mainViewModel, navController) {
                             SlotFlashContent(slotViewModel!!, slotSuffix, navController)
                         }
                     }
-                    val slotBackupsContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
-                        val slotSuffix = backStackEntry.arguments?.getString("slotSuffix") ?: ""
-                        val slotViewModel = if (slotSuffix == "_b") slotViewModelB else slotViewModelA
+                    val slotFlashContentB: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_b"
+                        val slotViewModel = slotViewModelB
+                        RefreshableScreen(mainViewModel, navController) {
+                            SlotFlashContent(slotViewModel!!, slotSuffix, navController)
+                        }
+                    }
+                    val slotFlashContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = ""
+                        val slotViewModel = slotViewModelA
+                        RefreshableScreen(mainViewModel, navController) {
+                            SlotFlashContent(slotViewModel!!, slotSuffix, navController)
+                        }
+                    }
+                    val slotBackupsContentA: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_a"
+                        val slotViewModel = slotViewModelA
                         if (backStackEntry.arguments?.getString("backupId") != null) {
                             backupsViewModel.currentBackup = backStackEntry.arguments?.getString("backupId")
                         } else {
@@ -226,9 +262,55 @@ class MainActivity : ComponentActivity() {
                             SlotBackupsContent(slotViewModel!!, backupsViewModel, slotSuffix, navController)
                         }
                     }
+                    val slotBackupsContentB: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_b"
+                        val slotViewModel = slotViewModelB
+                        if (backStackEntry.arguments?.getString("backupId") != null) {
+                            backupsViewModel.currentBackup = backStackEntry.arguments?.getString("backupId")
+                        } else {
+                            backupsViewModel.clearCurrent()
+                        }
+                        RefreshableScreen(mainViewModel, navController) {
+                            SlotBackupsContent(slotViewModel!!, backupsViewModel, slotSuffix, navController)
+                        }
+                    }
+                    val slotBackupsContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = ""
+                        val slotViewModel = slotViewModelA
+                        if (backStackEntry.arguments?.getString("backupId") != null) {
+                            backupsViewModel.currentBackup = backStackEntry.arguments?.getString("backupId")
+                        } else {
+                            backupsViewModel.clearCurrent()
+                        }
+                        RefreshableScreen(mainViewModel, navController) {
+                            SlotBackupsContent(slotViewModel!!, backupsViewModel, slotSuffix, navController)
+                        }
+                    }
+                    val slotBackupFlashContentA: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_a"
+                        val slotViewModel = slotViewModelA
+                        backupsViewModel.currentBackup = backStackEntry.arguments?.getString("backupId")
+                        if (backupsViewModel.backups.containsKey(backupsViewModel.currentBackup)) {
+                            RefreshableScreen(mainViewModel, navController) {
+                                SlotFlashContent(slotViewModel!!, slotSuffix, navController)
+                            }
+                        }
+
+                    }
+                    val slotBackupFlashContentB: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
+                        val slotSuffix = "_b"
+                        val slotViewModel = slotViewModelB
+                        backupsViewModel.currentBackup = backStackEntry.arguments?.getString("backupId")
+                        if (backupsViewModel.backups.containsKey(backupsViewModel.currentBackup)) {
+                            RefreshableScreen(mainViewModel, navController) {
+                                SlotFlashContent(slotViewModel!!, slotSuffix, navController)
+                            }
+                        }
+
+                    }
                     val slotBackupFlashContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
-                        val slotSuffix = backStackEntry.arguments?.getString("slotSuffix") ?: ""
-                        val slotViewModel = if (slotSuffix == "_b") slotViewModelB else slotViewModelA
+                        val slotSuffix = ""
+                        val slotViewModel = slotViewModelA
                         backupsViewModel.currentBackup = backStackEntry.arguments?.getString("backupId")
                         if (backupsViewModel.backups.containsKey(backupsViewModel.currentBackup)) {
                             RefreshableScreen(mainViewModel, navController) {
@@ -244,18 +326,31 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         if (mainViewModel.isAb) {
-                            composable("slot{slotSuffix}", content = slotContent)
-                            composable("slot{slotSuffix}/flash", content = slotFlashContent)
-                            composable("slot{slotSuffix}/flash/ak3", content = slotFlashContent)
-                            composable("slot{slotSuffix}/flash/image", content = slotFlashContent)
-                            composable("slot{slotSuffix}/flash/image/flash", content = slotFlashContent)
-                            composable("slot{slotSuffix}/backup", content = slotFlashContent)
-                            composable("slot{slotSuffix}/backup/backup", content = slotFlashContent)
-                            composable("slot{slotSuffix}/backups", content = slotBackupsContent)
-                            composable("slot{slotSuffix}/backups/{backupId}", content = slotBackupsContent)
-                            composable("slot{slotSuffix}/backups/{backupId}/restore", content = slotBackupsContent)
-                            composable("slot{slotSuffix}/backups/{backupId}/restore/restore", content = slotBackupsContent)
-                            composable("slot{slotSuffix}/backups/{backupId}/flash/ak3", content = slotBackupFlashContent)
+                            composable("slot_a", content = slotContentA)
+                            composable("slot_a/flash", content = slotFlashContentA)
+                            composable("slot_a/flash/ak3", content = slotFlashContentA)
+                            composable("slot_a/flash/image", content = slotFlashContentA)
+                            composable("slot_a/flash/image/flash", content = slotFlashContentA)
+                            composable("slot_a/backup", content = slotFlashContentA)
+                            composable("slot_a/backup/backup", content = slotFlashContentA)
+                            composable("slot_a/backups", content = slotBackupsContentA)
+                            composable("slot_a/backups/{backupId}", content = slotBackupsContentA)
+                            composable("slot_a/backups/{backupId}/restore", content = slotBackupsContentA)
+                            composable("slot_a/backups/{backupId}/restore/restore", content = slotBackupsContentA)
+                            composable("slot_a/backups/{backupId}/flash/ak3", content = slotBackupFlashContentA)
+
+                            composable("slot_b", content = slotContentB)
+                            composable("slot_b/flash", content = slotFlashContentB)
+                            composable("slot_b/flash/ak3", content = slotFlashContentB)
+                            composable("slot_b/flash/image", content = slotFlashContentB)
+                            composable("slot_b/flash/image/flash", content = slotFlashContentB)
+                            composable("slot_b/backup", content = slotFlashContentB)
+                            composable("slot_b/backup/backup", content = slotFlashContentB)
+                            composable("slot_b/backups", content = slotBackupsContentB)
+                            composable("slot_b/backups/{backupId}", content = slotBackupsContentB)
+                            composable("slot_b/backups/{backupId}/restore", content = slotBackupsContentB)
+                            composable("slot_b/backups/{backupId}/restore/restore", content = slotBackupsContentB)
+                            composable("slot_b/backups/{backupId}/flash/ak3", content = slotBackupFlashContentB)
                         } else {
                             composable("slot", content = slotContent)
                             composable("slot/flash", content = slotFlashContent)
