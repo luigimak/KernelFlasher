@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.ExperimentalUnitApi
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import com.github.capntrips.kernelflasher.R
 import com.github.capntrips.kernelflasher.common.PartitionUtil
@@ -179,13 +180,13 @@ fun ColumnScope.SlotFlashContent(
 					if (navController.currentDestination!!.route!!.contains("ak3") && viewModel.wasFlashSuccess == true && viewModel.showCautionDialog == true){
 						AlertDialog(
 							onDismissRequest = { viewModel.hideCautionDialog() },
-							title = { Text("CAUTION", style = MaterialTheme.typography.titleLarge) },
+							title = { Text("CAUTION!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
 							text = {
 								Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-									Text("You have flashed AnyKernel Zip to inactive slot!")
-									Text("But the active slot is not changed after flashing.")
-									Text("Change active slot or return to System Updater to complete OTA.")
-									Text("Do not reboot from here, unless you know what you are doing.")
+									Text("You have flashed AnyKernel Zip to inactive slot!", fontWeight = FontWeight.Bold)
+									Text("But the active slot is not changed after flashing.", fontWeight = FontWeight.Bold)
+									Text("Change active slot or return to System Updater to complete OTA.", fontWeight = FontWeight.Bold)
+									Text("Do not reboot from here, unless you know what you are doing.", fontWeight = FontWeight.Bold)
 								}
 							},
 							confirmButton = {

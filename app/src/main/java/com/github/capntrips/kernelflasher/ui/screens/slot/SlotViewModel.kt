@@ -187,7 +187,6 @@ class SlotViewModel(
     private fun uiPrint(message: String) {
         viewModelScope.launch(Dispatchers.Main) {
             _flashOutput.add("ui_print $message")
-            // _flashOutput.add("ui_print")
         }
     }
 
@@ -518,7 +517,6 @@ class SlotViewModel(
                 _wasFlashSuccess.value = false
                 val files = File(context.filesDir.canonicalPath)
                 val flashScript = File(files, "flash_ak3.sh")
-                val slot_inactive_state = if(isActive) "active" else "inactive"
                 val result = Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER or Shell.FLAG_REDIRECT_STDERR).build().newJob().add("F=$files Z=\"$zip\" /system/bin/sh $flashScript").to(flashOutput).exec()
                 if (result.isSuccess) {
                     log(context, "Kernel flashed successfully")
@@ -536,10 +534,6 @@ class SlotViewModel(
         } finally {
             uiPrint("")
             if (wasSlotReset) {
-                // uiPrint("CAUTION: You have flashed AnyKernel Zip to inactive slot!")
-                // uiPrint("But the active slot is not changed after flashing.")
-                // uiPrint("Use bootctl to change active slot or Return to System Updater to complete OTA.")
-                // uiPrint("Do not reboot from here, unless you know what you are doing.")
                 resetSlot()
 				viewModelScope.launch(Dispatchers.Main) {
 					showCautionDialog() // Show dialog instead of uiPrint
