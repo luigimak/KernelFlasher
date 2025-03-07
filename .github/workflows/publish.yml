@@ -3,6 +3,12 @@ permissions:
   contents: write
 on:
   workflow_dispatch:
+    inputs:
+      changes_in_release:
+        description: 'Changes in release'
+        required: true
+        default: 'Minor changes'
+        type: string
 
 jobs:
   build:
@@ -62,8 +68,12 @@ jobs:
         with:
           allowUpdates: true
           removeArtifacts: true
+          draft: true
           name: "1.${{ github.run_number }}.0"
           tag: "v1.${{ github.run_number }}.0"
           body: |
             Note: KernelFlasher + allow-errors
+
+            Changes in this Release:
+            ${{ github.event.inputs.changes_in_release }}
           artifacts: "*.apk"
