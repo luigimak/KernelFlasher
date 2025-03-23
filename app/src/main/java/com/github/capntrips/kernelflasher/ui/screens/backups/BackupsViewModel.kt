@@ -21,6 +21,7 @@ import com.github.capntrips.kernelflasher.common.types.partitions.Partitions
 import com.topjohnwu.superuser.Shell
 import com.topjohnwu.superuser.nio.ExtendedFile
 import com.topjohnwu.superuser.nio.FileSystemManager
+import kotlin.DeprecationLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,7 +61,7 @@ class BackupsViewModel(
     var wasRestored: Boolean? = null
     private val _backupPartitions: SnapshotStateMap<String, Boolean> = mutableStateMapOf()
     private val hashAlgorithm: String = "SHA-256"
-    @Deprecated("Backup migration will be removed in the first stable release")
+    @Deprecated("Backup migration will be removed in the first stable release", level = DeprecationLevel.WARNING)
     private var _needsMigration: MutableState<Boolean> = mutableStateOf(false)
 
     val restoreOutput: List<String>
@@ -82,8 +83,8 @@ class BackupsViewModel(
     fun refresh(context: Context) {
         val oldDir = context.getExternalFilesDir(null)
         val oldBackupsDir = File(oldDir, "backups")
-        @Deprecated("Backup migration will be removed in the first stable release")
-        _needsMigration.value = oldBackupsDir.exists() && oldBackupsDir.listFiles()?.size!! > 0
+        @Deprecated("Backup migration will be removed in the first stable release", level = DeprecationLevel.WARNING)
+        _needsMigration.value = oldBackupsDir.exists() && (oldBackupsDir.listFiles()?.isNotEmpty() == true)
         @SuppressLint("SdCardPath")
         val externalDir = File("/sdcard/KernelFlasher")
         val backupsDir = fileSystemManager.getFile("$externalDir/backups")
