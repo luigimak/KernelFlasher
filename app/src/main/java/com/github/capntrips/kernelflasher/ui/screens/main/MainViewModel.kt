@@ -5,7 +5,9 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
@@ -37,6 +39,7 @@ class MainViewModel(
     val slotSuffix: String
 
     val kernelVersion: String
+    val susfsVersion: String
     val isAb: Boolean
     val slotA: SlotViewModel
     val slotB: SlotViewModel?
@@ -56,9 +59,31 @@ class MainViewModel(
     val error: String
         get() = _error!!
 
+    data class UpdateDialogData(
+        val title: String,
+        val changelog: List<String>,
+        val onConfirm: () -> Unit
+    )
+
+    var updateDialogData by mutableStateOf<UpdateDialogData?>(null)
+        private set
+
+    fun showUpdateDialog(title: String, changelog: List<String>, onConfirm: () -> Unit) {
+        updateDialogData = UpdateDialogData(title, changelog, onConfirm)
+    }
+
+    fun hideUpdateDialog() {
+        updateDialogData = null
+    }
+
     init {
         PartitionUtil.init(context, fileSystemManager)
         kernelVersion = Shell.cmd("echo $(uname -r) $(uname -v)").exec().out[0]
+        susfsVersion = try {
+            Shell.cmd("susfsd version").exec().out[0]
+        } catch (e: Exception) {
+            "v0.0.0"
+        }
         slotSuffix = Shell.cmd("getprop ro.boot.slot_suffix").exec().out[0]
         backups = BackupsViewModel(context, fileSystemManager, navController, _isRefreshing, _backups)
         updates = UpdatesViewModel(context, fileSystemManager, navController, _isRefreshing)

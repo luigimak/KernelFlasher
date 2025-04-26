@@ -37,7 +37,7 @@ fun ColumnScope.SlotContent(
         navController = navController,
         isSlotScreen = true
     )
-    AnimatedVisibility(!viewModel.isRefreshing) {
+    AnimatedVisibility(!viewModel.isRefreshing.value) {
         Column {
             Spacer(Modifier.height(5.dp))
             OutlinedButton(
@@ -75,12 +75,12 @@ fun ColumnScope.SlotContent(
                 modifier = Modifier
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(4.dp),
-                onClick = { if (!viewModel.isRefreshing) viewModel.getKernel(context) }
+                onClick = { if (!viewModel.isRefreshing.value) viewModel.getKernel(context) }
             ) {
                 Text(stringResource(R.string.check_kernel_version))
             }
             if (viewModel.hasVendorDlkm) {
-                AnimatedVisibility(!viewModel.isRefreshing) {
+                AnimatedVisibility(!viewModel.isRefreshing.value) {
                     AnimatedVisibility(viewModel.isVendorDlkmMounted) {
                         OutlinedButton(
                             modifier = Modifier

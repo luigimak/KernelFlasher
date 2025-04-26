@@ -67,15 +67,18 @@ fun ColumnScope.SlotBackupsContent(
                 DataRow(stringResource(R.string.backup_type), currentBackup.type, mutableMaxWidth = cardWidth)
                 DataRow(stringResource(R.string.kernel_version), currentBackup.kernelVersion, mutableMaxWidth = cardWidth, clickable = true)
                 if (currentBackup.type == "raw") {
-                    DataRow(
-                        label = stringResource(R.string.boot_sha1),
-                        value = currentBackup.bootSha1!!.substring(0, 8),
-                        valueStyle = MaterialTheme.typography.titleSmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        mutableMaxWidth = cardWidth
-                    )
+                    if(!currentBackup.bootSha1.isNullOrEmpty())
+                    {
+                        DataRow(
+                            label = stringResource(R.string.boot_sha1),
+                            value = currentBackup.bootSha1.substring(0, 8),
+                            valueStyle = MaterialTheme.typography.titleSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            mutableMaxWidth = cardWidth
+                        )
+                    }
                     if (currentBackup.hashes != null) {
                         val hashWidth = remember { mutableIntStateOf(0) }
                         DataSet(stringResource(R.string.hashes)) {
@@ -84,7 +87,7 @@ fun ColumnScope.SlotBackupsContent(
                                 if (hash != null) {
                                     DataRow(
                                         label = partitionName,
-                                        value = hash.substring(0, 8),
+                                        value = hash.takeIf { it.isNotEmpty() }?.substring(0, 8) ?: "Hash not found!",
                                         valueStyle = MaterialTheme.typography.titleSmall.copy(
                                             fontFamily = FontFamily.Monospace,
                                             fontWeight = FontWeight.Medium
@@ -97,7 +100,7 @@ fun ColumnScope.SlotBackupsContent(
                     }
                 }
             }
-            AnimatedVisibility(!slotViewModel.isRefreshing) {
+            AnimatedVisibility(!slotViewModel.isRefreshing.value) {
                 Column {
                     Spacer(Modifier.height(5.dp))
                     if (slotViewModel.isActive) {
@@ -140,14 +143,14 @@ fun ColumnScope.SlotBackupsContent(
             }
         } else {
             DataCard(stringResource(R.string.backups))
-            val backups = backupsViewModel.backups.filter { it.value.bootSha1.equals(slotViewModel.sha1) || it.value.type == "ak3" }
+            val backups = backupsViewModel.backups.filter { it.value.bootSha1.isNullOrEmpty() || it.value.bootSha1.equals(slotViewModel.sha1) || it.value.type == "ak3" }
             if (backups.isNotEmpty()) {
                 for (id in backups.keys.sortedByDescending { it }) {
                     Spacer(Modifier.height(16.dp))
                     DataCard(
                         title = id,
                         button = {
-                            AnimatedVisibility(!slotViewModel.isRefreshing) {
+                            AnimatedVisibility(!slotViewModel.isRefreshing.value) {
                                 ViewButton(onClick = {
                                     navController.navigate("slot$slotSuffix/backups/$id")
                                 })

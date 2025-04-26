@@ -2,6 +2,7 @@ package com.github.capntrips.kernelflasher
 
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
@@ -16,11 +17,27 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.ExperimentalUnitApi
+import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
@@ -30,6 +47,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.github.capntrips.kernelflasher.ui.components.DialogButton
 import com.github.capntrips.kernelflasher.ui.screens.RefreshableScreen
 import com.github.capntrips.kernelflasher.ui.screens.backups.BackupsContent
 import com.github.capntrips.kernelflasher.ui.screens.backups.SlotBackupsContent
@@ -49,7 +67,7 @@ import com.topjohnwu.superuser.ipc.RootService
 import com.topjohnwu.superuser.nio.FileSystemManager
 import kotlinx.serialization.ExperimentalSerializationApi
 import java.io.File
-
+import kotlin.system.exitProcess
 
 @ExperimentalAnimationApi
 @ExperimentalMaterialApi
@@ -185,6 +203,20 @@ class MainActivity : ComponentActivity() {
                 MainViewModel(application, fileSystemManager, navController)
             }
             val mainViewModel = viewModel!!
+
+            val context = LocalContext.current
+            val dialogData = viewModel!!.updateDialogData
+            LaunchedEffect(Unit) {
+                AppUpdater.checkForUpdate(
+                    context.applicationContext,
+                    BuildConfig.VERSION_NAME
+                ) { title, lines, confirm ->
+                    viewModel!!.showUpdateDialog(title, lines, confirm)
+                }
+            }
+
+            var showExitDialog by remember { mutableStateOf(false) }
+
             KernelFlasherTheme {
                 if (!mainViewModel.hasError) {
                     mainListener = MainListener {
@@ -195,11 +227,15 @@ class MainActivity : ComponentActivity() {
                     val backupsViewModel = mainViewModel.backups
                     val updatesViewModel = mainViewModel.updates
                     val rebootViewModel = mainViewModel.reboot
-                    BackHandler(enabled = mainViewModel.isRefreshing, onBack = {})
+                    BackHandler(enabled = !mainViewModel.isRefreshing, onBack = {})
+                    // New back handler for exit
+                    BackHandler(enabled = true) {
+                        showExitDialog = true
+                    }
                     val slotContentA: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
                         val slotSuffix = "_a"
                         val slotViewModel = slotViewModelA
-                        if (slotViewModel!!.wasFlashSuccess != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
+                        if (slotViewModel!!.wasFlashSuccess.value != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
                             slotViewModel.clearFlash(this@MainActivity)
                         }
                         RefreshableScreen(mainViewModel, navController, swipeEnabled = true) {
@@ -210,7 +246,7 @@ class MainActivity : ComponentActivity() {
                     val slotContentB: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
                         val slotSuffix = "_b"
                         val slotViewModel = slotViewModelB
-                        if (slotViewModel!!.wasFlashSuccess != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
+                        if (slotViewModel!!.wasFlashSuccess.value != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
                             slotViewModel.clearFlash(this@MainActivity)
                         }
                         RefreshableScreen(mainViewModel, navController, swipeEnabled = true) {
@@ -221,7 +257,7 @@ class MainActivity : ComponentActivity() {
                     val slotContent: @Composable AnimatedVisibilityScope.(NavBackStackEntry) -> Unit = { backStackEntry ->
                         val slotSuffix = ""
                         val slotViewModel = slotViewModelA
-                        if (slotViewModel!!.wasFlashSuccess != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
+                        if (slotViewModel!!.wasFlashSuccess.value != null && listOf("slot{slotSuffix}", "slot").any { navController.currentDestination!!.route.equals(it) }) {
                             slotViewModel.clearFlash(this@MainActivity)
                         }
                         RefreshableScreen(mainViewModel, navController, swipeEnabled = true) {
@@ -423,6 +459,61 @@ class MainActivity : ComponentActivity() {
                     }
                 } else {
                     ErrorScreen(mainViewModel.error)
+                }
+
+                if (dialogData != null) {
+                    AlertDialog(
+                        onDismissRequest = { viewModel!!.hideUpdateDialog() },
+                        title = {
+                            Text(
+                                dialogData!!.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                dialogData!!.changelog.forEach {
+                                    Text(it, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            DialogButton("Update APK") {
+                                viewModel!!.hideUpdateDialog()
+                                dialogData!!.onConfirm()
+                            }
+                        },
+                        dismissButton = {
+                            DialogButton("CANCEL") {
+                                viewModel!!.hideUpdateDialog()
+                            }
+                        },
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+
+                if (showExitDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showExitDialog = false },
+                        title = { Text("Exit App") },
+                        text = { Text("Are you sure you want to exit?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                (context as? Activity)?.let {
+                                    it.finishAffinity()
+                                    exitProcess(0)
+                                }
+                            }) {
+                                Text("Yes")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showExitDialog = false }) {
+                                Text("No")
+                            }
+                        }
+                    )
                 }
             }
         }

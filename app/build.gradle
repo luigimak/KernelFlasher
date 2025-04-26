@@ -8,13 +8,12 @@ plugins {
 
 android {
     compileSdk 35
-
     defaultConfig {
         applicationId "com.github.capntrips.kernelflasher"
         minSdk 29
         targetSdk 34
-        versionCode 21
-        versionName "1.0.0-alpha21"
+        versionCode 25
+        versionName "1.4.0"
 
         javaCompileOptions {
             annotationProcessorOptions {
@@ -91,4 +90,6 @@ dependencies {
     implementation(libs.material)
     implementation(libs.okhttp)
     implementation(libs.kotlinx.serialization.json)
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
 }

@@ -27,7 +27,6 @@ import com.topjohnwu.superuser.nio.FileSystemManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.security.DigestOutputStream
@@ -43,8 +42,8 @@ class SlotViewModel(
     private val _isRefreshing: MutableState<Boolean>,
     val isActive: Boolean,
     val slotSuffix: String,
-    private val boot: File,
-    private val initBoot: File?,
+    val boot: File,
+    val initBoot: File?,
     private val _backups: MutableMap<String, Backup>
 ) : ViewModel() {
     companion object {
@@ -53,6 +52,8 @@ class SlotViewModel(
 
     private var _sha1: String? = null
     var kernelVersion: String? = null
+    var bootFmt: String? = null
+    var initBootFmt: String? = null
     var hasVendorDlkm: Boolean = false
     var isVendorDlkmMapped: Boolean = false
     var isVendorDlkmMounted: Boolean = false
@@ -73,16 +74,16 @@ class SlotViewModel(
         get() = _flashOutput
     val uiPrintedOutput: List<String>
         get() = _flashOutput.filter { it.startsWith("ui_print") }.map { it.substringAfter("ui_print").trim() }.filter { it.isNotEmpty() || it == "" }
-    val wasFlashSuccess: Boolean?
-        get() = _wasFlashSuccess.value
+    val wasFlashSuccess: MutableState<Boolean?>
+        get() = _wasFlashSuccess
     val backupPartitions: MutableMap<String, Boolean>
         get() = _backupPartitions
-    val isRefreshing: Boolean
-        get() = _isRefreshing.value
+    val isRefreshing: MutableState<Boolean>
+        get() = _isRefreshing
     val hasError: Boolean
         get() = _error != null
-    val error: String
-        get() = _error!!
+    val error: String?
+        get() = _error
 	val showCautionDialog: Boolean
 		get() = _showCautionDialog.value
 
@@ -90,15 +91,53 @@ class SlotViewModel(
         refresh(context)
     }
 
+    /**
+     * Extracts the KERNEL_FMT value from the given boot_unpack_op string.
+     *
+     * @param fmtString The full unpack output as a single string.
+     * @return The value of KERNEL_FMT (e.g., "raw"), or null if not found.
+     */
+    fun extractKernelFmt(fmtString: String): String? {
+        // Split the string into lines
+        val lines = fmtString.split("\n")
+
+        // Iterate through each line
+        for (line in lines) {
+            // Check if the line starts with "KERNEL_FMT"
+            if (line.trim().startsWith("KERNEL_FMT") || line.trim().startsWith("RAMDISK_FMT")) {
+                // Split the line by '[' and ']' to extract the value
+                val parts = line.split("[", "]")
+                if (parts.size > 1) {
+                    return parts[1].trim() // Return the value inside the brackets
+                }
+            }
+        }
+
+        // Return null if KERNEL_FMT is not found
+        return null
+    }
+
     fun refresh(context: Context) {
+        _error = null
+
         if (!isActive) {
             inInit = true
         }
 
         val magiskboot = File(context.filesDir, "magiskboot")
-        Shell.cmd("$magiskboot unpack $boot").exec()
+        // getOut() return List<string>
+        val unpackBootOutput = mutableListOf<String>()
+        Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER).build().newJob().add("$magiskboot unpack $boot").to(unpackBootOutput, unpackBootOutput).exec()
+        val boot_unpack_op = unpackBootOutput.joinToString("\n")
+
+        bootFmt = extractKernelFmt(boot_unpack_op.trimIndent())
         if (initBoot != null) {
             Shell.cmd("$magiskboot unpack $initBoot").exec()
+
+            val unpackInitBootOutput = mutableListOf<String>()
+            Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER).build().newJob().add("$magiskboot unpack $initBoot").to(unpackInitBootOutput, unpackInitBootOutput).exec()
+            val init_boot_unpack_op = unpackInitBootOutput.joinToString("\n")
+            initBootFmt = extractKernelFmt(init_boot_unpack_op.trimIndent())
         }
 
         val ramdisk = File(context.filesDir, "ramdisk.cpio")
@@ -517,12 +556,13 @@ class SlotViewModel(
                 _wasFlashSuccess.value = false
                 val files = File(context.filesDir.canonicalPath)
                 val flashScript = File(files, "flash_ak3.sh")
-                val result = Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER or Shell.FLAG_REDIRECT_STDERR).build().newJob().add("F=$files Z=\"$zip\" /system/bin/sh $flashScript").to(flashOutput).exec()
+                val result = Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER).build().newJob().add("F=$files Z=\"$zip\" /system/bin/sh $flashScript").to(flashOutput, flashOutput).exec()
                 if (result.isSuccess) {
                     log(context, "Kernel flashed successfully")
                     _wasFlashSuccess.value = true
                 } else {
                     log(context, "Failed to flash zip", shouldThrow = false)
+//                    Log.e(TAG, "Error: ${result.stderr.joinToString("\n")}")
                 }
                 clearTmp(context)
             } else {

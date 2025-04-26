@@ -47,7 +47,7 @@ object PartitionUtil {
     private fun findPartitionFstabEntry(context: Context, partitionName: String): FstabEntry? {
         val httools = File(context.filesDir, "httools_static")
         val result = Shell.cmd("$httools dump $partitionName").exec().out
-        if (result.isNotEmpty()) {
+        if (result.isNotEmpty() && result[0].trim().startsWith("{")) {
             return Json.decodeFromString<FstabEntry>(result[0])
         }
         return null

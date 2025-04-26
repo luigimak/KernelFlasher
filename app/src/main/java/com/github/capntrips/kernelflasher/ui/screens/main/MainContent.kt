@@ -40,6 +40,10 @@ fun ColumnScope.MainContent(
         if (viewModel.isAb) {
             DataRow(stringResource(R.string.slot_suffix), viewModel.slotSuffix, mutableMaxWidth = cardWidth)
         }
+        if(viewModel.susfsVersion != "v0.0.0")
+        {
+            DataRow(stringResource(R.string.susfs_version), viewModel.susfsVersion, mutableMaxWidth = cardWidth)
+        }
     }
     Spacer(Modifier.height(16.dp))
     SlotCard(

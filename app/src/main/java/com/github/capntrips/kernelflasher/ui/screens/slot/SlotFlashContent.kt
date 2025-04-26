@@ -1,5 +1,6 @@
 package com.github.capntrips.kernelflasher.ui.screens.slot
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.Box
@@ -21,7 +22,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -53,7 +56,16 @@ fun ColumnScope.SlotFlashContent(
     navController: NavController
 ) {
     val context = LocalContext.current
-	
+
+    val isRefreshing by remember { derivedStateOf { viewModel.isRefreshing } }
+    val currentRoute = navController.currentDestination!!.route.orEmpty()
+
+    BackHandler(enabled = ((currentRoute.endsWith("/flash/ak3") ||
+            currentRoute.endsWith("/flash/image/flash") ||
+            currentRoute.endsWith("/backup/backup")) && isRefreshing.value)) {
+
+    }
+
     if (!listOf("/flash/ak3", "/flash/image/flash", "/backup/backup").any { navController.currentDestination!!.route!!.endsWith(it) }) {
         SlotCard(
             title = stringResource(if (slotSuffix == "_a") R.string.slot_a else if (slotSuffix == "_b") R.string.slot_b else R.string.slot),
@@ -141,7 +153,7 @@ fun ColumnScope.SlotFlashContent(
             stringResource(if (navController.currentDestination!!.route!!.endsWith("/backup/backup")) R.string.backup else R.string.flash),
             if (navController.currentDestination!!.route!!.contains("ak3")) viewModel.uiPrintedOutput else viewModel.flashOutput
         ) {
-            AnimatedVisibility(!viewModel.isRefreshing && viewModel.wasFlashSuccess != null) {
+            AnimatedVisibility(!viewModel.isRefreshing.value && viewModel.wasFlashSuccess.value != null) {
                 Column {
                     if (navController.currentDestination!!.route!!.contains("ak3")) {
                         OutlinedButton(
@@ -160,7 +172,7 @@ fun ColumnScope.SlotFlashContent(
                         }
                     }
                     if (navController.currentDestination!!.route!!.contains("ak3")) {
-                        AnimatedVisibility(!navController.currentDestination!!.route!!.endsWith("/backups/{backupId}/flash/ak3") && viewModel.wasFlashSuccess != false) {
+                        AnimatedVisibility(!navController.currentDestination!!.route!!.endsWith("/backups/{backupId}/flash/ak3") && viewModel.wasFlashSuccess.value != false) {
                             OutlinedButton(
                                 modifier = Modifier
                                     .fillMaxWidth(),
@@ -177,7 +189,7 @@ fun ColumnScope.SlotFlashContent(
                             }
                         }
                     }
-					if (navController.currentDestination!!.route!!.contains("ak3") && viewModel.wasFlashSuccess == true && viewModel.showCautionDialog == true){
+					if (navController.currentDestination!!.route!!.contains("ak3") && viewModel.wasFlashSuccess.value == true && viewModel.showCautionDialog == true){
 						AlertDialog(
 							onDismissRequest = { viewModel.hideCautionDialog() },
 							title = { Text("CAUTION!", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) },
@@ -209,7 +221,7 @@ fun ColumnScope.SlotFlashContent(
 							modifier = Modifier.padding(16.dp)
 						)
 					}
-                    if (viewModel.wasFlashSuccess != false && navController.currentDestination!!.route!!.endsWith("/backup/backup")) {
+                    if (viewModel.wasFlashSuccess.value != false && navController.currentDestination!!.route!!.endsWith("/backup/backup")) {
                         OutlinedButton(
                             modifier = Modifier
                                 .fillMaxWidth(),
