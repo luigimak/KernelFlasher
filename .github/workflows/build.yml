@@ -12,6 +12,51 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Important: get all tags!
+
+      - name: Get Latest Tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0)
+          echo "LATEST_TAG=${latest_tag}" >> $GITHUB_ENV
+
+      - name: Count Commits Since Latest Tag
+        run: |
+          # Get the number of commits since the latest tag
+          commits_since_tag=$(git rev-list ${LATEST_TAG}..HEAD --count)
+          echo "COMMITS_SINCE_TAG=${commits_since_tag}" >> $GITHUB_ENV
+
+      - name: Generate Version
+        run: |
+          # Extract version components
+          version_base="${LATEST_TAG#v}"
+          major=$(echo $version_base | cut -d. -f1)
+          minor=$(echo $version_base | cut -d. -f2)
+          patch=$(echo $version_base | cut -d. -f3)
+          
+          # Increment patch by the number of commits since the last tag
+          new_patch=$((patch + $COMMITS_SINCE_TAG))
+          
+          # Construct the new version string
+          new_version="$major.$minor.$new_patch"
+          
+          # Calculate the version code (e.g., 1.0.5 -> 10005)
+          version_code=$((major * 10000 + minor * 100 + new_patch))
+          
+          # Set environment variables
+          echo "NEW_VERSION_NAME=${new_version}" >> $GITHUB_ENV
+          echo "NEW_VERSION_CODE=${version_code}" >> $GITHUB_ENV
+
+      - name: Update build.gradle with new version code and version name
+        run: |
+          # Update versionCode and versionName in build.gradle
+          sed -i "s/versionCode [0-9]\+/versionCode ${NEW_VERSION_CODE}/" app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"${NEW_VERSION_NAME}\"/" app/build.gradle
+
+      - name: Print Version
+        run: |
+          echo "Version Name: $NEW_VERSION_NAME"
+          echo "Version Code: $NEW_VERSION_CODE"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
