@@ -79,11 +79,9 @@ class MainViewModel(
     init {
         PartitionUtil.init(context, fileSystemManager)
         kernelVersion = Shell.cmd("echo $(uname -r) $(uname -v)").exec().out[0]
-        susfsVersion = try {
-            Shell.cmd("susfsd version").exec().out[0]
-        } catch (e: Exception) {
-            "v0.0.0"
-        }
+        susfsVersion = runCatching { Shell.cmd("susfsd version").exec().out[0] }
+            .recoverCatching { Shell.cmd("ksu_susfs show version").exec().out[0] }
+            .getOrDefault("v0.0.0")
         slotSuffix = Shell.cmd("getprop ro.boot.slot_suffix").exec().out[0]
         backups = BackupsViewModel(context, fileSystemManager, navController, _isRefreshing, _backups)
         updates = UpdatesViewModel(context, fileSystemManager, navController, _isRefreshing)
