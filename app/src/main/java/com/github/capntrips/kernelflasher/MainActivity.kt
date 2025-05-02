@@ -207,11 +207,13 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val dialogData = viewModel!!.updateDialogData
             LaunchedEffect(Unit) {
-                AppUpdater.checkForUpdate(
-                    context.applicationContext,
-                    BuildConfig.VERSION_NAME
-                ) { title, lines, confirm ->
-                    viewModel!!.showUpdateDialog(title, lines, confirm)
+                if(AppUpdater.hasActiveInternetConnection()) {
+                    AppUpdater.checkForUpdate(
+                        context.applicationContext,
+                        BuildConfig.VERSION_NAME
+                    ) { title, lines, confirm ->
+                        viewModel!!.showUpdateDialog(title, lines, confirm)
+                    }
                 }
             }
 

@@ -15,6 +15,11 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 interface GitHubApi {
     @GET("repos/fatalcoder524/KernelFlasher/releases/latest")
@@ -48,6 +53,18 @@ object AppUpdater {
         return latestParts.zip(currentParts).any { (l, c) -> l > c }
     }
 
+    suspend fun hasActiveInternetConnection(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("https://connectivitycheck.gstatic.com/generate_204")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.setRequestProperty("User-Agent", "Android")
+            connection.connectTimeout = 1500
+            connection.connect()
+            return@withContext connection.responseCode == 204
+        } catch (e: IOException) {
+            return@withContext false
+        }
+    }
 
     // Checks if an update is available
     suspend fun checkForUpdate(
