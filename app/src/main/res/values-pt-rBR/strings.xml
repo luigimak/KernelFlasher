@@ -63,5 +63,6 @@
     <string name="partition_selection_unavailable">Seleção de partição indisponível para backups antigos</string>
     <string name="boot_fmt">Formato do boot.img</string>
     <string name="init_boot_fmt">Formato do init_boot.img</string>
+    <string name="ramdisk_fmt">Formato do Ramdisk</string>
     <string name="susfs_version">SUSFS Versão</string>
 </resources>

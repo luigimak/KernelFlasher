@@ -63,5 +63,6 @@
     <string name="partition_selection_unavailable">旧的备份无法选择分区</string>
     <string name="boot_fmt">boot.img 格式</string>
     <string name="init_boot_fmt">init_boot.img 格式</string>
+    <string name="ramdisk_fmt">Ramdisk 格式</string>
     <string name="susfs_version">SUSFS 版本</string>
 </resources>

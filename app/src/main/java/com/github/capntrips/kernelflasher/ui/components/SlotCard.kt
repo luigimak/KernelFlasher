@@ -47,10 +47,10 @@ fun SlotCard(
                 mutableMaxWidth = cardWidth
             )
         }
-        AnimatedVisibility(!viewModel.isRefreshing.value && viewModel.kernelVersion != null) {
+        AnimatedVisibility(!viewModel.isRefreshing.value && viewModel.bootInfo.kernelVersion != null) {
             DataRow(
                 label = stringResource(R.string.kernel_version),
-                value = if (viewModel.kernelVersion != null) viewModel.kernelVersion!! else "",
+                value = if (viewModel.bootInfo.kernelVersion != null) viewModel.bootInfo.kernelVersion!! else "",
                 mutableMaxWidth = cardWidth,
                 clickable = true
             )
@@ -66,20 +66,16 @@ fun SlotCard(
             }
             DataRow(stringResource(R.string.vendor_dlkm), vendorDlkmValue, mutableMaxWidth = cardWidth)
         }
-        if(viewModel.boot?.name != null) {
-            DataRow(
-                    label = stringResource(R.string.boot_fmt),
-                    value = viewModel.bootFmt ?: stringResource(R.string.not_found),
-                    mutableMaxWidth = cardWidth
-                )
-        }
-        if(viewModel.initBoot?.name != null) {
-            DataRow(
-                label = stringResource(R.string.init_boot_fmt),
-                value = viewModel.initBootFmt ?: stringResource(R.string.not_found),
-                mutableMaxWidth = cardWidth
-            )
-        }
+        DataRow(
+            label = stringResource(R.string.boot_fmt),
+            value = viewModel.bootInfo.bootFmt ?: stringResource(R.string.not_found),
+            mutableMaxWidth = cardWidth
+        )
+        DataRow(
+            label = if (viewModel.bootInfo.ramdiskLocation == "init_boot.img") stringResource(R.string.init_boot_fmt) else stringResource(R.string.ramdisk_fmt),
+            value = viewModel.bootInfo.initBootFmt ?: stringResource(R.string.not_found),
+            mutableMaxWidth = cardWidth
+        )
         if (!viewModel.isRefreshing.value && viewModel.hasError) {
             Row {
                 DataValue(

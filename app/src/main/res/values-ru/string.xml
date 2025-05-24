@@ -63,5 +63,6 @@
     <string name="partition_selection_unavailable">Выбор раздела недоступен для устаревших резервных копий</string>
     <string name="boot_fmt">boot.img формат</string>
     <string name="init_boot_fmt">init_boot.img формат</string>
+    <string name="ramdisk_fmt">Ramdisk формат</string>
     <string name="susfs_version">SUSFS Версия</string>
 </resources>

@@ -48,12 +48,21 @@ class SlotViewModel(
 ) : ViewModel() {
     companion object {
         const val TAG: String = "KernelFlasher/SlotState"
+        const val HEADER_VER = "HEADER_VER"
+        const val KERNEL_FMT = "KERNEL_FMT"
+        const val RAMDISK_FMT = "RAMDISK_FMT"
     }
 
+    data class BootInfo(
+        var kernelVersion: String? = null,
+        var bootFmt: String? = null,
+        var headerVersion: String? = null,
+        var initBootFmt: String? = null,
+        var ramdiskLocation: String? = null
+    )
+
     private var _sha1: String? = null
-    var kernelVersion: String? = null
-    var bootFmt: String? = null
-    var initBootFmt: String? = null
+    private val _bootInfo: MutableState<BootInfo> = mutableStateOf(BootInfo())
     var hasVendorDlkm: Boolean = false
     var isVendorDlkmMapped: Boolean = false
     var isVendorDlkmMounted: Boolean = false
@@ -86,58 +95,49 @@ class SlotViewModel(
         get() = _error
 	val showCautionDialog: Boolean
 		get() = _showCautionDialog.value
+    val bootInfo: BootInfo
+        get() = _bootInfo.value
 
     init {
         refresh(context)
     }
 
-    /**
-     * Extracts the KERNEL_FMT value from the given boot_unpack_op string.
-     *
-     * @param fmtString The full unpack output as a single string.
-     * @return The value of KERNEL_FMT (e.g., "raw"), or null if not found.
-     */
-    fun extractKernelFmt(fmtString: String): String? {
-        // Split the string into lines
-        val lines = fmtString.split("\n")
-
-        // Iterate through each line
-        for (line in lines) {
-            // Check if the line starts with "KERNEL_FMT"
-            if (line.trim().startsWith("KERNEL_FMT") || line.trim().startsWith("RAMDISK_FMT")) {
-                // Split the line by '[' and ']' to extract the value
-                val parts = line.split("[", "]")
-                if (parts.size > 1) {
-                    return parts[1].trim() // Return the value inside the brackets
-                }
-            }
-        }
-
-        // Return null if KERNEL_FMT is not found
-        return null
+    private fun extractKernelValues(input: String, key: String): String? {
+        val regex = Regex("$key\\s*\\[([^]]+)]")
+        return regex.find(input)?.groupValues?.get(1)
     }
 
     fun refresh(context: Context) {
         _error = null
+        _sha1 = null
+        _bootInfo.value = _bootInfo.value.copy(kernelVersion = null, bootFmt = null, headerVersion = null, initBootFmt = null, ramdiskLocation = null)
 
         if (!isActive) {
             inInit = true
         }
 
         val magiskboot = File(context.filesDir, "magiskboot")
-        // getOut() return List<string>
+        Shell.cmd("$magiskboot cleanup").exec()
+
         val unpackBootOutput = mutableListOf<String>()
-        Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER).build().newJob().add("$magiskboot unpack $boot").to(unpackBootOutput, unpackBootOutput).exec()
-        val boot_unpack_op = unpackBootOutput.joinToString("\n")
+        Shell.cmd("$magiskboot unpack $boot").to(unpackBootOutput, unpackBootOutput).exec()
+        val bootUnpackOp = unpackBootOutput.joinToString("\n")
 
-        bootFmt = extractKernelFmt(boot_unpack_op.trimIndent())
-        if (initBoot != null) {
-            Shell.cmd("$magiskboot unpack $initBoot").exec()
+        _bootInfo.value.headerVersion = extractKernelValues(bootUnpackOp.trimIndent(), HEADER_VER)
+        _bootInfo.value.bootFmt = extractKernelValues(bootUnpackOp.trimIndent(), KERNEL_FMT)
+        _bootInfo.value.initBootFmt = extractKernelValues(bootUnpackOp.trimIndent(), RAMDISK_FMT)
+        if (_bootInfo.value.initBootFmt != null)
+            _bootInfo.value.ramdiskLocation = "boot.img"
 
+        Log.d(TAG, _bootInfo.value.toString())
+        if (initBoot != null && _bootInfo.value.initBootFmt == null) {
             val unpackInitBootOutput = mutableListOf<String>()
-            Shell.Builder.create().setFlags(Shell.FLAG_MOUNT_MASTER).build().newJob().add("$magiskboot unpack $initBoot").to(unpackInitBootOutput, unpackInitBootOutput).exec()
-            val init_boot_unpack_op = unpackInitBootOutput.joinToString("\n")
-            initBootFmt = extractKernelFmt(init_boot_unpack_op.trimIndent())
+            if(Shell.cmd("$magiskboot unpack $initBoot").to(unpackInitBootOutput, unpackInitBootOutput).exec().isSuccess)
+            {
+                val initBootUnpackOp = unpackInitBootOutput.joinToString("\n")
+                _bootInfo.value.initBootFmt = extractKernelValues(initBootUnpackOp.trimIndent(), RAMDISK_FMT)
+                _bootInfo.value.ramdiskLocation = "init_boot.img"
+            }
         }
 
         val ramdisk = File(context.filesDir, "ramdisk.cpio")
@@ -166,8 +166,18 @@ class SlotViewModel(
             }
         } else if (kernel.exists()) {
             _sha1 = Shell.cmd("$magiskboot sha1 $boot").exec().out.firstOrNull()
+            if(_bootInfo.value.headerVersion.equals("4") && _bootInfo.value.ramdiskLocation.equals(null))
+            {
+                _bootInfo.value.ramdiskLocation = "boot.img"
+                _bootInfo.value.initBootFmt = "lz4_legacy"
+            }
         } else {
-            _error = "Invalid boot.img, no ramdisk or kernel found"
+            if(_bootInfo.value.headerVersion.equals("4") && _bootInfo.value.ramdiskLocation.equals(null))
+            {
+                _bootInfo.value.ramdiskLocation = "boot.img"
+                _bootInfo.value.initBootFmt = "lz4_legacy"
+            }
+            _error = "Unable to generate SHA1 hash. Invalid boot.img or magiskboot unpack failed!"
         }
         Shell.cmd("$magiskboot cleanup").exec()
 
@@ -175,7 +185,7 @@ class SlotViewModel(
             _backupPartitions[partitionName] = true
         }
 
-        kernelVersion = null
+        _bootInfo.value.kernelVersion = null
         inInit = false
     }
 
@@ -291,14 +301,11 @@ class SlotViewModel(
     private fun _getKernel(context: Context) {
         val magiskboot = File(context.filesDir, "magiskboot")
         Shell.cmd("$magiskboot unpack $boot").exec()
-        if (initBoot != null) {
-            Shell.cmd("$magiskboot unpack $initBoot").exec()
-        }
         val kernel = File(context.filesDir, "kernel")
         if (kernel.exists()) {
             val result = Shell.cmd("strings kernel | grep -E -m1 'Linux version.*#' | cut -d\\  -f3-").exec().out
             if (result.isNotEmpty()) {
-                kernelVersion = result[0].replace("""\(.+\)""".toRegex(), "").replace("""\s+""".toRegex(), " ")
+                _bootInfo.value.kernelVersion = result[0].replace("""\(.+\)""".toRegex(), "").replace("""\s+""".toRegex(), " ")
             }
         }
         Shell.cmd("$magiskboot cleanup").exec()
@@ -425,13 +432,13 @@ class SlotViewModel(
     fun backup(context: Context) {
         launch {
             _clearFlash()
-            val currentKernelVersion = if (kernelVersion != null) {
-                kernelVersion
+            val currentKernelVersion = if (_bootInfo.value.kernelVersion != null) {
+                _bootInfo.value.kernelVersion
             } else if (isActive) {
                 System.getProperty("os.version")!!
             } else {
                 _getKernel(context)
-                kernelVersion
+                _bootInfo.value.kernelVersion
             }
             val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd--HH-mm"))
             val backupDir = createBackupDir(context, now)
@@ -458,7 +465,7 @@ class SlotViewModel(
                 val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd--HH-mm"))
                 val backupDir = createBackupDir(context, now)
                 val jsonFile = backupDir.getChildFile("backup.json")
-                val backup = Backup(now, "ak3", kernelVersion!!, null, flashFilename)
+                val backup = Backup(now, "ak3", _bootInfo.value.kernelVersion!!, null, flashFilename)
                 val indentedJson = Json { prettyPrint = true }
                 jsonFile.outputStream().use { it.write(indentedJson.encodeToString(backup).toByteArray(Charsets.UTF_8)) }
                 val destination = backupDir.getChildFile(flashFilename!!)

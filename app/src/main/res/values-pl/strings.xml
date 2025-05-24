@@ -64,5 +64,6 @@
     <string name="partition_selection_unavailable">Wybór partycji niedostępny dla kopii zapasowych starszego formatu</string>
     <string name="boot_fmt">Format boot.img</string>
     <string name="init_boot_fmt">Format init_boot.img</string>
+    <string name="ramdisk_fmt">Format Ramdisk</string>
     <string name="susfs_version">Wersja SUSFS</string>
 </resources>
