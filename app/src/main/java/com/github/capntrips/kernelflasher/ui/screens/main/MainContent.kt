@@ -40,7 +40,7 @@ fun ColumnScope.MainContent(
         if (viewModel.isAb) {
             DataRow(stringResource(R.string.slot_suffix), viewModel.slotSuffix, mutableMaxWidth = cardWidth)
         }
-        if(viewModel.susfsVersion != "v0.0.0")
+        if(viewModel.susfsVersion != "v0.0.0" && viewModel.susfsVersion != "Invalid")
         {
             DataRow(stringResource(R.string.susfs_version), viewModel.susfsVersion, mutableMaxWidth = cardWidth)
         }
