@@ -50,8 +50,17 @@ jobs:
           
           # Increment versions by the specified input values
           new_major=$((major + ${{ github.event.inputs.increment_major }}))
-          new_minor=$((minor + ${{ github.event.inputs.increment_minor }}))
-          new_patch=$((patch + ${{ github.event.inputs.increment_patch }}))
+          if [ ${{ github.event.inputs.increment_major }} -gt 0 ]; then
+              new_minor="${{ github.event.inputs.increment_minor }}"
+              new_patch="${{ github.event.inputs.increment_patch }}"
+          else
+              new_minor=$((minor + ${{ github.event.inputs.increment_minor }}))
+              if [ ${{ github.event.inputs.increment_minor }} -gt 0 ]; then
+                new_patch="${{ github.event.inputs.increment_patch }}"
+              else
+                new_patch=$((patch + ${{ github.event.inputs.increment_patch }}))
+              fi
+          fi
           
           # Construct the new version string
           new_version="$new_major.$new_minor.$new_patch"
