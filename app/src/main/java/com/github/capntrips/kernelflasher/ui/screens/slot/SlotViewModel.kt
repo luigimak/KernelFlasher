@@ -15,6 +15,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
+import com.github.capntrips.kernelflasher.SharedViewModels
 import com.github.capntrips.kernelflasher.common.PartitionUtil
 import com.github.capntrips.kernelflasher.common.extensions.ByteArray.toHex
 import com.github.capntrips.kernelflasher.common.extensions.ExtendedFile.inputStream
@@ -27,6 +28,7 @@ import com.topjohnwu.superuser.nio.FileSystemManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.security.DigestOutputStream
@@ -585,6 +587,7 @@ class SlotViewModel(
         Shell.cmd("chmod +rwx $file").exec()
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     @Suppress("FunctionName")
     private suspend fun _flashAk3(context: Context, type: String) {
         if (!isActive) {
@@ -620,6 +623,7 @@ class SlotViewModel(
 					showCautionDialog() // Show dialog instead of uiPrint
 				}
             }
+            SharedViewModels.mainViewModel.markRefreshNeeded()
         }
     }
 	
@@ -800,6 +804,7 @@ class SlotViewModel(
                     }
                 }
             }
+            SharedViewModels.mainViewModel.markRefreshNeeded()
         }
     }
 
@@ -848,6 +853,7 @@ class SlotViewModel(
                         showCautionDialog() // Show dialog instead of uiPrint
                     }
                 }
+                SharedViewModels.mainViewModel.markRefreshNeeded()
             }
         }
     }

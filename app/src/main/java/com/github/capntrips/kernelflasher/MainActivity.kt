@@ -71,6 +71,10 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import java.io.File
 import kotlin.system.exitProcess
 
+object SharedViewModels {
+    lateinit var mainViewModel: MainViewModel
+}
+
 @ExperimentalAnimationApi
 @ExperimentalMaterialApi
 @ExperimentalMaterial3Api
@@ -210,6 +214,7 @@ class MainActivity : ComponentActivity() {
                 MainViewModel(application, fileSystemManager, navController)
             }
             val mainViewModel = viewModel!!
+            SharedViewModels.mainViewModel = mainViewModel
 
             val context = LocalContext.current
             val dialogData = viewModel!!.updateDialogData
