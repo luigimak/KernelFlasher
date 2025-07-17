@@ -2,13 +2,16 @@ package com.github.capntrips.kernelflasher
 
 import android.animation.ObjectAnimator
 import android.animation.PropertyValuesHolder
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Intent
 import android.content.ServiceConnection
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.DocumentsContract
 import android.util.Log
 import android.view.View
 import android.view.ViewTreeObserver
@@ -141,7 +144,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
+        val isZipIntent = intent?.action == Intent.ACTION_VIEW &&
+                (intent.type == "application/zip" || intent.data?.toString()?.endsWith(".zip") == true)
+
         splashScreen.setOnExitAnimationListener { splashScreenView ->
+            val duration = if (isZipIntent) 100L else 250L
             val scale = ObjectAnimator.ofPropertyValuesHolder(
                 splashScreenView.view,
                 PropertyValuesHolder.ofFloat(
@@ -156,7 +163,7 @@ class MainActivity : ComponentActivity() {
                 )
             )
             scale.interpolator = AccelerateInterpolator()
-            scale.duration = 250L
+            scale.duration = duration
             scale.doOnEnd { splashScreenView.remove() }
             scale.start()
         }
@@ -175,6 +182,8 @@ class MainActivity : ComponentActivity() {
             }
         )
 
+
+
         Shell.getShell()
         if (Shell.isAppGrantedRoot()!!) {
             val intent = Intent(this, FilesystemService::class.java)
@@ -184,6 +193,49 @@ class MainActivity : ComponentActivity() {
                 KernelFlasherTheme {
                     ErrorScreen(stringResource(R.string.root_required))
                 }
+            }
+        }
+    }
+
+    @SuppressLint("WrongConstant")
+    private fun handleZipIntent(intent: Intent?) {
+        val action = intent?.action ?: return
+        val uri = when (action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            else -> null
+        } ?: return
+        Log.d(MainViewModel.Companion.TAG, intent?.data.toString())
+
+        if (intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND) {
+            if(uri.scheme == "content" && DocumentsContract.isDocumentUri(this, uri)) {
+                val takeFlags =
+                    intent.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                try {
+                    contentResolver.takePersistableUriPermission(uri, takeFlags)
+                } catch (se: SecurityException) {
+                    Log.e(MainViewModel.Companion.TAG, se.message, se)
+                }
+            }
+
+            viewModel?.pendingFlashUri = uri
+            if(viewModel?.isAb == true)
+                viewModel?.showSlotIntentDialog?.value = true
+            else {
+                viewModel?.slotSuffixForFlash?.value = null
+                viewModel?.slotSuffixForFlash?.value = viewModel?.slotSuffix
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (Shell.isAppGrantedRoot() == true) {
+            handleZipIntent(intent)
+            if (intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND) {
+                intent.replaceExtras(Bundle()) // Clear any existing data
+                setIntent(Intent())            // Replace with empty intent
             }
         }
     }
@@ -217,6 +269,14 @@ class MainActivity : ComponentActivity() {
             val mainViewModel = viewModel!!
             SharedViewModels.mainViewModel = mainViewModel
 
+            val slotSuffix by viewModel!!.slotSuffixForFlash
+
+            handleZipIntent(intent)
+            if (intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND) {
+                intent.replaceExtras(Bundle()) // Clear any existing data
+                setIntent(Intent())            // Replace with empty intent
+            }
+
             val context = LocalContext.current
             val dialogData = viewModel!!.updateDialogData
             LaunchedEffect(Unit) {
@@ -226,6 +286,31 @@ class MainActivity : ComponentActivity() {
                         BuildConfig.VERSION_NAME
                     ) { title, lines, confirm ->
                         viewModel!!.showUpdateDialog(title, lines, confirm)
+                    }
+                }
+
+                val uri = viewModel?.pendingFlashUri
+
+                if (uri != null) {
+                    if (viewModel?.isAb == true && slotSuffix == null) {
+                        viewModel?.pendingFlashUri = uri
+                        viewModel?.showSlotIntentDialog?.value = true
+                    } else {
+                        // Already have slot or not AB - flash directly
+                        navController.navigate("slot${slotSuffix}/flash/ak3") {
+                            popUpTo("slot${slotSuffix}")
+                        }
+                        if (viewModel?.isAb == true && slotSuffix == "_b")
+                        {
+                            viewModel?.slotB?.flashAk3(context, uri)
+                        }
+                        else
+                        {
+                            viewModel?.slotA?.flashAk3(context, uri)
+                        }
+
+                        viewModel?.pendingFlashUri = null
+                        viewModel?.slotSuffixForFlash?.value = null
                     }
                 }
             }
@@ -529,6 +614,53 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
+                }
+
+                if (viewModel?.showSlotIntentDialog?.value == true) {
+                    AlertDialog(
+                        onDismissRequest = { viewModel?.showSlotIntentDialog?.value = false },
+                        title = { Text("Select Slot to Flash") },
+                        text = { Text("Choose the slot where the zip should be flashed.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel?.slotSuffixForFlash?.value = null
+                                viewModel?.slotSuffixForFlash?.value = if(viewModel?.slotSuffix == "_a") "_b" else "_a"
+                                viewModel?.showSlotIntentDialog?.value = false
+                            }) {
+                                Text("Inactive Slot")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = {
+                                viewModel?.slotSuffixForFlash?.value = null
+                                viewModel?.slotSuffixForFlash?.value = viewModel?.slotSuffix
+                                viewModel?.showSlotIntentDialog?.value = false
+                            }) {
+                                Text("Active Slot")
+                            }
+                        }
+                    )
+                }
+
+                LaunchedEffect(slotSuffix) {
+                    val uri = viewModel!!.pendingFlashUri
+
+                    if (uri != null && slotSuffix != null) {
+                        navController.navigate("slot${slotSuffix}/flash/ak3") {
+                            popUpTo("slot${slotSuffix}")
+                        }
+                        if (viewModel?.isAb == true && slotSuffix == "_b")
+                        {
+                            viewModel?.slotB?.flashAk3(context, uri)
+                        }
+                        else
+                        {
+                            viewModel?.slotA?.flashAk3(context, uri)
+                        }
+
+                        viewModel!!.pendingFlashUri = null
+                        viewModel!!.slotSuffixForFlash.value = null
+                    }
                 }
             }
         }

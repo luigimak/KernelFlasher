@@ -555,11 +555,15 @@ class SlotViewModel(
     @Suppress("FunctionName")
     private fun _copyFile(context: Context, uri: Uri) {
         flashUri = uri
-        flashFilename = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            if (!cursor.moveToFirst()) return@use null
-            val name = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            return@use cursor.getString(name)
-        } ?: "ak3.zip"
+        flashFilename = if (uri.scheme == "file") {
+            File(uri.path ?: "").name
+        } else {
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val name = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                return@use cursor.getString(name)
+            } ?: "ak3.zip"
+        }
         val source = context.contentResolver.openInputStream(uri)
         val file = File(context.filesDir, flashFilename!!)
         source.use { inputStream ->

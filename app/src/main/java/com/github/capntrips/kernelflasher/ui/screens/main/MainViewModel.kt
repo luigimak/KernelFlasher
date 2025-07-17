@@ -2,6 +2,7 @@ package com.github.capntrips.kernelflasher.ui.screens.main
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.MutableState
@@ -53,6 +54,10 @@ class MainViewModel(
     private val _isRefreshRequired = mutableStateOf(true)
     private var _error: String? = null
     private var _backups: MutableMap<String, Backup> = mutableMapOf()
+    var showSlotIntentDialog: MutableState<Boolean> = mutableStateOf(false)
+
+    var pendingFlashUri: Uri? = null
+    var slotSuffixForFlash = mutableStateOf<String?>(null)
 
     val isRefreshing: Boolean
         get() = _isRefreshing.value
