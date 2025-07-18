@@ -64,6 +64,9 @@ android {
         jniLibs {
             useLegacyPackaging true
         }
+        androidResources {
+            generateLocaleConfig = true
+        }
     }
     namespace 'com.github.capntrips.kernelflasher'
 }
