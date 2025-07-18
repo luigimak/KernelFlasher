@@ -297,18 +297,22 @@ class MainActivity : ComponentActivity() {
                         viewModel?.showSlotIntentDialog?.value = true
                     } else {
                         // Already have slot or not AB - flash directly
-                        navController.navigate("slot${slotSuffix}/flash/ak3") {
-                            popUpTo("slot${slotSuffix}")
-                        }
                         if (viewModel?.isAb == true && slotSuffix == "_b")
                         {
-                            viewModel?.slotB?.flashAk3(context, uri)
+                            viewModel?.slotB?.flashActionType = "flashAk3"
+                            viewModel?.slotB?.flashActionURI = uri
+                            viewModel?.slotB?.showConfirmDialog()
                         }
                         else
                         {
-                            viewModel?.slotA?.flashAk3(context, uri)
+                            viewModel?.slotA?.flashActionType = "flashAk3"
+                            viewModel?.slotA?.flashActionURI = uri
+                            viewModel?.slotA?.showConfirmDialog()
                         }
-
+                        navController.navigate("slot${slotSuffix}")
+                        navController.navigate("slot${slotSuffix}/flash") {
+                            popUpTo("slot${slotSuffix}")
+                        }
                         viewModel?.pendingFlashUri = null
                         viewModel?.slotSuffixForFlash?.value = null
                     }
@@ -646,18 +650,22 @@ class MainActivity : ComponentActivity() {
                     val uri = viewModel!!.pendingFlashUri
 
                     if (uri != null && slotSuffix != null) {
-                        navController.navigate("slot${slotSuffix}/flash/ak3") {
-                            popUpTo("slot${slotSuffix}")
-                        }
                         if (viewModel?.isAb == true && slotSuffix == "_b")
                         {
-                            viewModel?.slotB?.flashAk3(context, uri)
+                            viewModel?.slotB?.flashActionType = "flashAk3"
+                            viewModel?.slotB?.flashActionURI = uri
+                            viewModel?.slotB?.showConfirmDialog()
                         }
                         else
                         {
-                            viewModel?.slotA?.flashAk3(context, uri)
+                            viewModel?.slotA?.flashActionType = "flashAk3"
+                            viewModel?.slotA?.flashActionURI = uri
+                            viewModel?.slotA?.showConfirmDialog()
                         }
-
+                        navController.navigate("slot${slotSuffix}")
+                        navController.navigate("slot${slotSuffix}/flash") {
+                            popUpTo("slot${slotSuffix}")
+                        }
                         viewModel!!.pendingFlashUri = null
                         viewModel!!.slotSuffixForFlash.value = null
                     }

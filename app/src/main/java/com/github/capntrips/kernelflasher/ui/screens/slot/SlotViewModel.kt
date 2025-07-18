@@ -94,6 +94,10 @@ class SlotViewModel(
     private var inInit = true
     private var _error: String? = null
 	private val _showCautionDialog: MutableState<Boolean> = mutableStateOf(false)
+	private val _showConfirmDialog: MutableState<Boolean> = mutableStateOf(false)
+    var flashActionType: String = ""
+    var flashActionURI: Uri? = null
+    var flashActionPartName: String? = null
 
     val sha1: String?
         get() = _sha1
@@ -113,6 +117,8 @@ class SlotViewModel(
         get() = _error
 	val showCautionDialog: Boolean
 		get() = _showCautionDialog.value
+    val showConfirmDialog: Boolean
+        get() = _showConfirmDialog.value
     val slotInfo: SlotInfo
         get() = _slotInfo.value
 
@@ -256,6 +262,14 @@ class SlotViewModel(
 	fun hideCautionDialog() {
 		_showCautionDialog.value = false
 	}
+
+    fun showConfirmDialog() {
+        _showConfirmDialog.value = true
+    }
+
+    fun hideConfirmDialog() {
+        _showConfirmDialog.value = false
+    }
 
     // TODO: use base class for common functions
     @Suppress("SameParameterValue")
@@ -649,7 +663,7 @@ class SlotViewModel(
             uiPrint("")
             if (wasSlotReset) {
                 resetSlot()
-				viewModelScope.launch(Dispatchers.Main) {
+                viewModelScope.launch(Dispatchers.Main) {
 					showCautionDialog() // Show dialog instead of uiPrint
 				}
             }
